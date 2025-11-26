@@ -2,6 +2,7 @@ require('dotenv').config();
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
+const LLMService = require('./llm-service');
 
 // Load configuration
 const configPath = path.join(__dirname, '..', 'config.json');
@@ -16,10 +17,24 @@ try {
 // Load environment variables
 const FB_EMAIL = process.env.FB_EMAIL;
 const FB_PASSWORD = process.env.FB_PASSWORD;
+const LLM_PROVIDER = process.env.LLM_PROVIDER; // claude, openrouter, or deepseek
+const LLM_API_KEY = process.env.LLM_API_KEY;
 
 if (!FB_EMAIL || !FB_PASSWORD) {
   console.error('Error: FB_EMAIL and FB_PASSWORD must be set in .env file');
   process.exit(1);
+}
+
+// Initialize LLM service if configured
+let llmService = null;
+if (LLM_PROVIDER && LLM_API_KEY) {
+  try {
+    llmService = new LLMService(LLM_PROVIDER, LLM_API_KEY);
+    console.log(`LLM Service initialized with provider: ${LLM_PROVIDER}`);
+  } catch (error) {
+    console.error('Failed to initialize LLM service:', error.message);
+    console.error('Falling back to simple keyword matching');
+  }
 }
 
 // Track processed messages to avoid duplicate replies
@@ -80,14 +95,39 @@ async function checkForMessages(page) {
       return results;
     });
 
-    // Check if any conversation contains trigger keywords
+    // Check messages for matches
     for (const conv of conversations) {
       for (const rule of config.rules) {
-        if (conv.text.toLowerCase().includes(rule.trigger.toLowerCase())) {
-          const messageId = `${conv.text}-${Date.now()}`;
+        let shouldReply = false;
+        let matchReason = '';
+
+        // Use LLM-based semantic matching if available and enabled for this rule
+        if (llmService && rule.useLLM) {
+          const result = await llmService.checkMessageSimilarity(
+            conv.text,
+            rule.triggers || [rule.trigger],
+            rule.language || 'English'
+          );
+
+          if (result.isMatch && result.confidence >= (rule.minConfidence || 70)) {
+            shouldReply = true;
+            matchReason = `LLM match (${result.confidence}% confident): ${result.reasoning}`;
+          }
+        }
+        // Fall back to simple keyword matching
+        else if (rule.trigger) {
+          if (conv.text.toLowerCase().includes(rule.trigger.toLowerCase())) {
+            shouldReply = true;
+            matchReason = `Keyword match: "${rule.trigger}"`;
+          }
+        }
+
+        if (shouldReply) {
+          const messageId = `${conv.text.substring(0, 50)}-${rule.response}`;
 
           if (!processedMessages.has(messageId)) {
-            console.log(`Detected trigger: "${rule.trigger}" in message`);
+            console.log(`Message detected: "${conv.text}"`);
+            console.log(`Match: ${matchReason}`);
             await sendReply(page, rule.response);
             processedMessages.add(messageId);
 
@@ -96,6 +136,9 @@ async function checkForMessages(page) {
               const arr = Array.from(processedMessages);
               processedMessages.delete(arr[0]);
             }
+
+            // Only reply once per check cycle
+            return;
           }
         }
       }
@@ -157,9 +200,12 @@ async function monitorMessenger() {
     await loginToFacebook(page);
 
     console.log('Monitoring for messages...');
+    console.log(`LLM-based matching: ${llmService ? 'ENABLED' : 'DISABLED (using simple keywords)'}`);
     console.log(`Active rules: ${config.rules.length}`);
     config.rules.forEach((rule, index) => {
-      console.log(`  ${index + 1}. Trigger: "${rule.trigger}" -> Response: "${rule.response}"`);
+      const mode = rule.useLLM ? '[LLM]' : '[Keyword]';
+      const triggers = rule.triggers ? rule.triggers.join(', ') : rule.trigger;
+      console.log(`  ${index + 1}. ${mode} Triggers: "${triggers}" -> Response: "${rule.response}"`);
     });
     console.log('');
 

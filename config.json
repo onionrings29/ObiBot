@@ -2,6 +2,17 @@
   "checkInterval": 5000,
   "rules": [
     {
+      "useLLM": true,
+      "triggers": [
+        "nakauwi ka na",
+        "busy",
+        "anong gawa mo"
+      ],
+      "response": "opo nagrereview",
+      "language": "Filipino/Tagalog",
+      "minConfidence": 70
+    },
+    {
       "trigger": "hello",
       "response": "Hi! This is an automated response. I'll get back to you soon!"
     },

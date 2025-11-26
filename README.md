@@ -12,7 +12,11 @@ A simple automation bot that monitors your Facebook Messenger and automatically 
 
 ## Features
 
-- 🤖 Automatic message detection based on keywords
+- 🤖 **Two matching modes:**
+  - **Simple keyword matching** - Basic substring matching (no API needed)
+  - **AI-powered semantic matching** - Uses LLMs to understand message meaning (requires API key)
+- 🧠 **LLM Integration** - Supports Claude, OpenRouter, and DeepSeek APIs
+- 🌏 **Multi-language support** - Works with any language (Tagalog/Filipino, English, etc.)
 - 💬 Customizable trigger words and responses
 - ⚙️ Simple JSON configuration
 - 🐳 Docker support for easy deployment
@@ -55,13 +59,46 @@ Edit `.env` and add your Facebook credentials:
 ```env
 FB_EMAIL=your-facebook-email@example.com
 FB_PASSWORD=your-facebook-password
+
+# Optional: LLM Configuration for semantic matching
+LLM_PROVIDER=claude
+LLM_API_KEY=your-api-key-here
 ```
 
 **⚠️ NEVER commit the `.env` file to git!**
 
+#### LLM Provider Setup (Optional)
+
+For AI-powered semantic matching, choose one provider and get an API key:
+
+**Option 1: Claude (Recommended)**
+- Sign up at https://console.anthropic.com/
+- Get API key from Settings → API Keys
+- Supports: Claude 3.5 Sonnet (best for understanding context)
+
+**Option 2: OpenRouter**
+- Sign up at https://openrouter.ai/
+- Get API key and choose from multiple models
+- More flexible, pay-per-use pricing
+
+**Option 3: DeepSeek**
+- Sign up at https://platform.deepseek.com/
+- Get API key
+- Cost-effective option
+
+Then set in `.env`:
+```env
+LLM_PROVIDER=claude  # or openrouter, or deepseek
+LLM_API_KEY=sk-ant-xxxxx  # your actual API key
+```
+
+**Note:** If you don't configure LLM, the bot will use simple keyword matching (still works fine!).
+
 ### 4. Configure Auto-Reply Rules
 
 Edit `config.json` to set your trigger words and responses:
+
+#### Simple Keyword Matching (No LLM needed):
 
 ```json
 {
@@ -79,10 +116,53 @@ Edit `config.json` to set your trigger words and responses:
 }
 ```
 
+#### AI-Powered Semantic Matching (Requires LLM):
+
+```json
+{
+  "checkInterval": 5000,
+  "rules": [
+    {
+      "useLLM": true,
+      "triggers": [
+        "nakauwi ka na",
+        "busy",
+        "anong gawa mo"
+      ],
+      "response": "opo nagrereview",
+      "language": "Filipino/Tagalog",
+      "minConfidence": 70
+    },
+    {
+      "trigger": "urgent",
+      "response": "I've received your urgent message!"
+    }
+  ]
+}
+```
+
+**Configuration Options:**
+
 - `checkInterval`: How often to check for new messages (in milliseconds)
-- `rules`: Array of trigger-response pairs
-  - `trigger`: Keyword to look for in incoming messages (case-insensitive)
-  - `response`: Message to send automatically
+- `rules`: Array of trigger-response rules
+
+**For simple keyword matching:**
+- `trigger`: Single keyword to look for (case-insensitive)
+- `response`: Message to send automatically
+
+**For LLM-based semantic matching:**
+- `useLLM`: Set to `true` to enable AI matching
+- `triggers`: Array of phrases representing the meaning you want to detect
+- `response`: Message to send when semantic match is found
+- `language`: Language context (e.g., "Filipino/Tagalog", "English", "Spanish")
+- `minConfidence`: Minimum confidence percentage (0-100) required to trigger response
+
+**How LLM matching works:**
+Instead of exact keyword matching, the AI analyzes if the incoming message has *similar meaning* to your trigger phrases. For example, with triggers `["nakauwi ka na", "busy", "anong gawa mo"]`, it will match messages like:
+- "Nandyan ka na ba?" (similar to "nakauwi ka na")
+- "May ginagawa ka ba?" (similar to "anong gawa mo")
+- "Occupied ka?" (similar to "busy")
+- And many other variations with similar meaning!
 
 ### 5. Run the Bot
 
@@ -142,14 +222,19 @@ headless: true,
 
 1. **Login**: Uses Puppeteer to log into Facebook with your credentials
 2. **Navigation**: Navigates to messenger.com
-3. **Monitoring**: Continuously checks conversations for trigger keywords
-4. **Auto-Reply**: When a trigger is detected, automatically types and sends the configured response
-5. **Deduplication**: Tracks processed messages to avoid duplicate replies
+3. **Monitoring**: Continuously checks conversations for messages
+4. **Message Analysis**:
+   - **Simple mode**: Checks if message contains trigger keywords
+   - **LLM mode**: Sends message to AI to determine semantic similarity with trigger phrases
+5. **Auto-Reply**: When a match is detected (keyword or semantic), automatically types and sends the configured response
+6. **Deduplication**: Tracks processed messages to avoid duplicate replies
 
 ## Security Considerations
 
-- Your `.env` file contains sensitive credentials - keep it secure
+- Your `.env` file contains sensitive credentials (Facebook password + LLM API keys) - keep it secure
 - Never commit `.env` to version control (already in `.gitignore`)
+- LLM API keys have usage costs - monitor your API usage
+- Messages are sent to the LLM provider for analysis (if using LLM mode)
 - Consider using a VPN or your home network
 - Facebook may detect automation and require verification
 - Enable 2FA on your Facebook account for additional security
