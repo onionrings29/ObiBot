@@ -1,0 +1,17 @@
+{
+  "checkInterval": 5000,
+  "rules": [
+    {
+      "trigger": "hello",
+      "response": "Hi! This is an automated response. I'll get back to you soon!"
+    },
+    {
+      "trigger": "are you there",
+      "response": "I'm currently away but will respond when I'm back!"
+    },
+    {
+      "trigger": "urgent",
+      "response": "I've received your urgent message and will respond as soon as possible."
+    }
+  ]
+}

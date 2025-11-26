@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  messenger-bot:
+    build: .
+    container_name: obibot-messenger
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./config.json:/app/config.json:ro
+    environment:
+      - NODE_ENV=production
+    # Uncomment if you need to see the browser (requires X11 forwarding)
+    # environment:
+    #   - DISPLAY=${DISPLAY}
+    # volumes:
+    #   - /tmp/.X11-unix:/tmp/.X11-unix
