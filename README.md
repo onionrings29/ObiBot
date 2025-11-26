@@ -1,14 +1,28 @@
 # ObiBot - Facebook Messenger Auto-Reply
 
-A simple automation bot that monitors your Facebook Messenger and automatically replies to messages based on configurable triggers.
+An intelligent auto-reply bot for Facebook Messenger with **two modes**:
+1. **Official Messenger API** (Recommended) - For Professional Mode/Pages - Legitimate, stable, ToS-compliant
+2. **Browser Automation** (Legacy) - For personal accounts - Violates ToS, use at own risk
 
-## ⚠️ Important Warnings
+## 🎯 Which Mode Should I Use?
 
-- **This tool uses browser automation and violates Facebook's Terms of Service**
+### ✅ Use Official API if:
+- You have **Professional Mode** enabled on Messenger (you mentioned you have this!)
+- You have a Facebook Page
+- You want a legitimate, ToS-compliant solution
+- You need reliability and webhooks
+
+### ⚠️ Use Browser Automation if:
+- You only have a personal account (without Professional Mode)
+- You understand and accept the risk of account restrictions
+- This is for educational/testing purposes only
+
+## ⚠️ Important Warnings (Browser Automation Mode Only)
+
+- **Browser automation violates Facebook's Terms of Service**
 - **Your account may be restricted or banned**
 - **Use at your own risk - for personal/educational purposes only**
-- **Facebook does NOT provide API access for personal accounts**
-- For production use, consider creating a Facebook Page and using the official Messenger Platform API
+- **For Professional Mode, use the Official API instead (see below)**
 
 ## Features
 
@@ -33,6 +47,137 @@ A simple automation bot that monitors your Facebook Messenger and automatically 
 - Docker Compose
 
 ## Quick Start
+
+Choose your setup method:
+- **[Official API Setup](#official-api-setup-recommended)** (For Professional Mode/Pages)
+- **[Browser Automation Setup](#browser-automation-setup-legacy)** (For personal accounts)
+
+---
+
+## Official API Setup (Recommended)
+
+### ✅ Prerequisites
+- Facebook Page or Messenger Professional Mode enabled
+- Public HTTPS URL for webhooks (use ngrok for testing, or deploy to a server)
+
+### Step 1: Install Dependencies
+
+```bash
+cd ObiBot
+npm install
+```
+
+### Step 2: Create Facebook App
+
+1. Go to https://developers.facebook.com/apps/
+2. Click **"Create App"**
+3. Select **"Business"** as app type
+4. Fill in app details and create
+
+### Step 3: Add Messenger Product
+
+1. In your app dashboard, click **"Add Product"**
+2. Find **"Messenger"** and click **"Set Up"**
+3. Scroll to **"Access Tokens"**
+4. Select your Page and generate a **Page Access Token**
+5. **Copy this token** - you'll need it for `.env`
+
+### Step 4: Configure Webhook
+
+1. In Messenger settings, find **"Webhooks"** section
+2. Click **"Add Callback URL"**
+3. Enter your webhook URL:
+   - **For testing with ngrok**: `https://your-ngrok-url.ngrok.io/webhook`
+   - **For production**: `https://yourdomain.com/webhook`
+4. Enter a **Verify Token** (any random string you choose, e.g., `my-secret-verify-token-123`)
+5. Subscribe to webhook fields: **messages**, **messaging_postbacks**
+6. Click **"Verify and Save"**
+
+### Step 5: Subscribe App to Page
+
+1. Still in Messenger Webhooks section
+2. Find **"Select a page to subscribe your webhook"**
+3. Select your Page
+4. Subscribe to **messages** events
+
+### Step 6: Configure Environment Variables
+
+Create `.env` file:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your credentials:
+
+```env
+# Messenger API
+PAGE_ACCESS_TOKEN=your-page-access-token-from-step-3
+VERIFY_TOKEN=my-secret-verify-token-123
+PORT=3000
+
+# Optional: LLM for semantic matching
+LLM_PROVIDER=claude
+LLM_API_KEY=sk-ant-xxxxx
+```
+
+### Step 7: Configure Rules
+
+Edit `config.json` (already configured with your Tagalog example):
+
+```json
+{
+  "checkInterval": 5000,
+  "rules": [
+    {
+      "useLLM": true,
+      "triggers": ["nakauwi ka na", "busy", "anong gawa mo"],
+      "response": "opo nagrereview",
+      "language": "Filipino/Tagalog",
+      "minConfidence": 70
+    }
+  ]
+}
+```
+
+### Step 8: Start the Server
+
+**For local testing with ngrok:**
+
+Terminal 1 - Start ngrok:
+```bash
+ngrok http 3000
+```
+Copy the HTTPS URL (e.g., `https://abc123.ngrok.io`)
+
+Terminal 2 - Start bot:
+```bash
+npm start
+```
+
+**For production:**
+```bash
+npm start
+```
+
+Or with Docker:
+```bash
+docker-compose up -d
+```
+
+### Step 9: Test It!
+
+1. Send a message to your Page on Messenger
+2. Try: "Nandyan ka na ba?" or "Busy ka?" or "Anong ginagawa mo?"
+3. Bot should reply with "opo nagrereview"
+
+✅ **Done! Your bot is now running with the official API!**
+
+---
+
+## Browser Automation Setup (Legacy)
+
+⚠️ **Use only if you don't have Professional Mode**
 
 ### 1. Clone and Setup
 
@@ -164,12 +309,14 @@ Instead of exact keyword matching, the AI analyzes if the incoming message has *
 - "Occupied ka?" (similar to "busy")
 - And many other variations with similar meaning!
 
-### 5. Run the Bot
+### 5. Run the Bot (Browser Automation Mode)
+
+⚠️ **Note:** For browser automation only. If using Official API, see setup above.
 
 #### Option A: Run Directly (Mac)
 
 ```bash
-npm start
+npm run start:browser
 ```
 
 The bot will:
@@ -180,6 +327,8 @@ The bot will:
 5. Automatically reply when triggers are detected
 
 #### Option B: Run with Docker (Proxmox/Linux)
+
+Update `docker-compose.yml` to use browser mode, then:
 
 ```bash
 docker-compose up -d
@@ -194,6 +343,8 @@ To stop:
 ```bash
 docker-compose down
 ```
+
+---
 
 ## Configuration Options
 
